@@ -121,7 +121,7 @@ class AuthRegistration(AuthConsumer):
         # If the user gets here, they have attempted to log in using an 
         # OpenID BUT it's an OpenID we have never seen before - so show 
         # them the index page but with an additional message
-        return self.do_index(request, self.unknown_openid_message)
+        return self.show_login(request, self.unknown_openid_message)
     
     def show_already_signed_in(self, request):
         return self.show_message(
