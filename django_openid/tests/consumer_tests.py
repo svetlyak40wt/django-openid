@@ -172,3 +172,21 @@ class CookieConsumerTest(TestCase):
         self.assertEqual(response['Location'], '/')
         self.assertEqual(response.cookies['openid'].value, '')
 
+class URLConfTest(TestCase):
+    urlconf = 'django_openid.tests.test_urls'
+
+    def testCreateURLConf(self):
+        from django.core.urlresolvers import resolve, Resolver404
+
+        self.assert_(resolve('/test_oid/', self.urlconf))
+        self.assert_(resolve('/test_oid/complete/', self.urlconf))
+
+        self.assertRaises(Resolver404, resolve, '/test_oid/blah_minor/', self.urlconf)
+
+    def testReverseByName(self):
+        from django.core.urlresolvers import reverse, NoReverseMatch
+
+        self.assert_(reverse('openid-index', self.urlconf))
+        self.assert_(reverse('openid-complete', self.urlconf))
+        self.assertRaises(NoReverseMatch, reverse, 'openid-blah-minor', self.urlconf)
+

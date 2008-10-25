@@ -23,3 +23,19 @@ class OpenID:
             issued = datetime.datetime.now(),
             sreg = openid_response.extensionResponse('sreg', False)
         )
+
+def create_urlconf(prefix, obj):
+    from django.conf.urls.defaults import patterns
+    if prefix and prefix[-1] != '/':
+        prefix += '/'
+
+    ptns = patterns('',)
+    for key in dir(obj):
+        if key.startswith('do_'):
+            view = key[3:]
+            view_name = 'openid-' + view
+            view = (view != 'index') and (view + '/') or ''
+
+            view_pattern = r'^%s%s$' % (prefix, view)
+            ptns += patterns('', (view_pattern, getattr(obj, key), {}, view_name))
+    return ptns
