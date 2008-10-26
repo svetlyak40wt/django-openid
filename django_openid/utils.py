@@ -24,7 +24,7 @@ class OpenID:
             sreg = openid_response.extensionResponse('sreg', False)
         )
 
-def create_urlconf(prefix, obj):
+def create_urlconf(prefix, obj, name_prefix = 'openid'):
     from django.conf.urls.defaults import patterns
     if prefix and prefix[-1] != '/':
         prefix += '/'
@@ -33,7 +33,7 @@ def create_urlconf(prefix, obj):
     for key in dir(obj):
         if key.startswith('do_'):
             view = key[3:]
-            view_name = 'openid-' + view
+            view_name = name_prefix + '-' + view
             view = (view != 'index') and (view + '/') or ''
 
             view_pattern = r'^%s%s$' % (prefix, view)

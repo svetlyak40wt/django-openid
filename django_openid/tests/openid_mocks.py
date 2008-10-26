@@ -55,6 +55,10 @@ class MyDiscoverFailConsumer(Consumer):
         )
 
 class MyConsumerMixin(object):
+    _shared_state = {}
+    def __init__(self):
+        self.__dict__ = self._shared_state
+
     def get_consumer(self, request, session_store):
         return MockConsumer(
             consumer = self,
