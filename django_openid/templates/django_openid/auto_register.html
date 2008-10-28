@@ -1,0 +1,51 @@
+{% extends base_template %}
+{% load i18n %}
+
+{% block title %}Register an account{% endblock %}
+
+{% block extra_head %}
+<style type="text/css">
+input.openid {
+  background: url({{ logo }}) no-repeat; 
+  background-position: 0 50%;
+  padding-left: 16px;
+  width: 20em;
+}
+div.field-wrapper {
+    clear: both;
+    margin-bottom: 0.5em;
+    width: 32em;
+}
+.errors input {
+    background-color: pink;
+}
+div.field-wrapper label {
+    width: 9em;
+    float: left;
+    clear: left;
+}
+div.field-wrapper input {
+    width: 20em;
+}
+input#id_username {
+    width: 12em;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{% trans 'Register an account' %}</h1>
+{% if openid %}
+    <p>
+    {% blocktrans %}Your were registered on the site and OpenID <strong>{{ openid }}</strong> was associated with this account.{% endblocktrans %}
+    </p>
+{% else %}
+    <form action="" method="POST">
+        <p><label for="openid_url">{% trans 'Your OpenID' %}:</label>
+            <input type="text" class="openid" name="openid_url" id="openid_url">
+            <input type="submit" value="{% trans 'Register' %}">
+        </p>
+    </form>
+{% endif %}
+
+{% endblock %}
