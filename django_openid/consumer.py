@@ -112,19 +112,6 @@ Fzk0lpcjIQA7""".strip()
         context['base_template'] = self.base_template
         return render_to_response(template, context)
     
-    def __call__(self, request, rest_of_url=''):
-        if not request.path.endswith('/'):
-            return HttpResponseRedirect(request.path + '/')
-        
-        # Dispatch based on path component
-        part = rest_of_url.split('/')[0]
-        
-        if not part:
-            return self.do_index(request)
-        if not hasattr(self, 'do_%s' % part):
-            raise Http404, 'No do_%s method' % part
-        return getattr(self, 'do_%s' % part)(request)
-    
     def do_index(self, request):
         return self.do_login(request)
     
