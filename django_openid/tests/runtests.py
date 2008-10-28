@@ -13,7 +13,7 @@ except NameError:
 
 CONSUMER_TESTS_DIR_NAME = 'consumertests'
 
-TEST_TEMPLATE_DIR = 'templates'
+TEST_TEMPLATE_DIRS = ('../templates', 'templates')
 
 CONSUMER_TEST_DIR = os.path.join(os.path.dirname(__file__), CONSUMER_TESTS_DIR_NAME)
 
@@ -53,7 +53,7 @@ def django_tests(verbosity, interactive, test_labels):
     # Redirect some settings for the duration of these tests.
     settings.INSTALLED_APPS = ALWAYS_INSTALLED_APPS
     settings.ROOT_URLCONF = 'urls'
-    settings.TEMPLATE_DIRS = (os.path.join(os.path.dirname(__file__), TEST_TEMPLATE_DIR),)
+    settings.TEMPLATE_DIRS = [os.path.join(os.path.dirname(__file__), d) for d in TEST_TEMPLATE_DIRS]
     settings.USE_I18N = True
     settings.LANGUAGE_CODE = 'en'
     settings.LOGIN_URL = '/accounts/login/'
@@ -113,8 +113,8 @@ if __name__ == "__main__":
         help='Verbosity level; 0=minimal output, 1=normal output, 2=all output')
     parser.add_option('--noinput', action='store_false', dest='interactive', default=True,
         help='Tells Django to NOT prompt the user for input of any kind.')
-    parser.add_option('--settings',
-        help='Python path to settings module, e.g. "myproject.settings". If this isn\'t provided, the DJANGO_SETTINGS_MODULE environment variable will be used.')
+    parser.add_option('--settings', default='settings',
+        help='Python path to settings module, e.g. "myproject.settings". If this isn\'t provided, the DJANGO_SETTINGS_MODULE environment variable will be used. Default "settings".')
     options, args = parser.parse_args()
     if options.settings:
         os.environ['DJANGO_SETTINGS_MODULE'] = options.settings

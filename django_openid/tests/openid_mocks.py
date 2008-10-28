@@ -26,38 +26,28 @@ class MockOpenIDResponse(object):
         return {}
 
 class MockConsumer(object):
-    def __init__(self, consumer, user_url, redirect_url, session_store,
-            raise_discover_failure=None):
+    def __init__(self, consumer, user_url, redirect_url, session_store):
         self.consumer = consumer
         self.user_url = user_url
         self.redirect_url = redirect_url
         self.session_store = session_store
-        self.raise_discover_failure = raise_discover_failure
     
     def complete(self, *args, **kwargs):
         return self.consumer._mock_response
     
     def begin(self, user_url):
         from openid.consumer.discover import DiscoveryFailure
-        if self.raise_discover_failure:
+        if self.consumer.raise_discover_failure:
             raise DiscoveryFailure(500, 'Error')
         self.session_store['openid_bits'] = {'foo': 'bar'}
         return MockAuthRequest(self)
 
-class MyDiscoverFailConsumer(Consumer):
-    def get_consumer(self, request, session_store):
-        return MockConsumer(
-            consumer = self,
-            user_url = 'http://simonwillison.net/',
-            redirect_url = 'http://url-of-openid-server/',
-            session_store = session_store,
-            raise_discover_failure = True,
-        )
 
 class MyConsumerMixin(object):
     _shared_state = {}
     def __init__(self):
         self.__dict__ = self._shared_state
+        self.raise_discover_failure = False
 
     def get_consumer(self, request, session_store):
         return MockConsumer(
