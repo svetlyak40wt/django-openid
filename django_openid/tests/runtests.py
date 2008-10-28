@@ -32,7 +32,7 @@ def get_test_models():
     models = []
     for loc, dirpath in ((CONSUMER_TESTS_DIR_NAME, CONSUMER_TEST_DIR),):
         for f in os.listdir(dirpath):
-            if f.startswith('__init__') or f.startswith('.') or f.startswith('sql') or f.startswith('invalid'):
+            if f.endswith('.py') or f.endswith('.pyc') or f.startswith('.') or f.startswith('sql') or f.startswith('invalid'):
                 continue
             models.append((loc, f))
     return models
