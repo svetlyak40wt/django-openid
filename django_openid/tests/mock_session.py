@@ -1,10 +1,6 @@
-class MockSession(dict):
-    def __init__(self, **kwargs):
-        super(MockSession, self).__init__(**kwargs)
-        self.modified = False
+from django.contrib.sessions.backends.cache import SessionStore as CachedSession
 
-
-_mock_session = MockSession()
+_mock_session = CachedSession()
 
 def SessionStore(session_key = None):
     return _mock_session
