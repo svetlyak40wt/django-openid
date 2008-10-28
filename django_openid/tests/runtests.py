@@ -11,11 +11,12 @@ except NameError:
     from sets import Set as set     # For Python 2.3
 
 
-CONSUMER_TESTS_DIR_NAME = 'consumertests'
+TESTS_DIR_NAMES = ('consumertests', 'utiltests')
 
 TEST_TEMPLATE_DIRS = ('../templates', 'templates')
 
-CONSUMER_TEST_DIR = os.path.join(os.path.dirname(__file__), CONSUMER_TESTS_DIR_NAME)
+FULL_DIR_NAMES = [(dir_name, os.path.join(os.path.dirname(__file__), dir_name)) for dir_name in TESTS_DIR_NAMES]
+
 
 ALWAYS_INSTALLED_APPS = [
     'django.contrib.contenttypes',
@@ -30,7 +31,7 @@ ALWAYS_INSTALLED_APPS = [
 
 def get_test_models():
     models = []
-    for loc, dirpath in ((CONSUMER_TESTS_DIR_NAME, CONSUMER_TEST_DIR),):
+    for loc, dirpath in FULL_DIR_NAMES:
         for f in os.listdir(dirpath):
             if f.endswith('.py') or f.endswith('.pyc') or f.startswith('.') or f.startswith('sql') or f.startswith('invalid'):
                 continue
