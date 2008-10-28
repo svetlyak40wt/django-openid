@@ -1,12 +1,8 @@
 from django.test import TestCase
-from django.http import Http404
-from django_openid.consumer import Consumer
 from django_openid import signed
 from django.core.urlresolvers import reverse
 
-from request_factory import RequestFactory
 from openid_mocks import *
-from mock_session import SessionStore
 
 from openid.consumer import consumer as janrain_consumer
 

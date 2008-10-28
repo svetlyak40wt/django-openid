@@ -1,8 +1,6 @@
 from django.test import TestCase
 from django.core.urlresolvers import resolve, Resolver404, reverse, NoReverseMatch
 
-from pdb import set_trace
-
 class URLConfTest(TestCase):
     def testCreateURLConf(self):
         self.assert_(resolve('/consumer/urlconf/openid/'))
