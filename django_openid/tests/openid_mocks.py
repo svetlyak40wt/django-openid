@@ -66,14 +66,14 @@ class MyConsumerMixin(object):
         self._mock_response = MockOpenIDResponse(status, identity_url)
 
 class MyConsumer(MyConsumerMixin, Consumer):
-    pass
+    page_name_prefix='obasic'
 
 class MySessionConsumer(MyConsumerMixin, SessionConsumer):
-    pass
+    page_name_prefix='osession'
 
 class MyCookieConsumer(MyConsumerMixin, CookieConsumer):
-    pass
+    page_name_prefix='ocookie'
 
 class MyAutoRegistration(MyConsumerMixin, AutoRegistration):
-    pass
+    page_name_prefix='oauto'
 

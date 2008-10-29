@@ -4,15 +4,14 @@ and providing OpenID. User applications should define subclasses of this,
 then hook those up directly to the urlconf.
 
 from myapp import MyConsumerSubclass
+from django_openid.utils import create_urlconf
 
-urlpatterns = patterns('',
-    ('r^openid/(.*)', MyConsumerSubclass()),
-    ...
-)
+urlpatterns += create_urlconf('openid', MyConsumerSubclass())
 """
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.shortcuts import render_to_response
+from django.core.urlresolvers import reverse
 
 from openid.consumer import consumer
 from openid.consumer.discover import DiscoveryFailure
@@ -70,6 +69,7 @@ class Consumer(object):
     login_template = 'django_openid/login.html'
     error_template = 'django_openid/error.html'
     message_template = 'django_openid/message.html'
+    page_name_prefix = 'openid'
     
     # Extension args; most of the time you'll just need the sreg shortcuts
     extension_args = {}
@@ -177,8 +177,9 @@ Fzk0lpcjIQA7""".strip()
             ).begin(user_url)
         except DiscoveryFailure:
             return self.show_error(request, self.openid_invalid_message)
-        
-        trust_root = self.trust_root or request.build_absolute_uri()
+       
+        absolute_url = request.build_absolute_uri()
+        trust_root = self.trust_root or reverse(self.page_name_prefix + '-index')
         
         try:
             next = signed.loads(
@@ -192,14 +193,9 @@ Fzk0lpcjIQA7""".strip()
             next = next_override
         
         # Signed ?next= from the URL takes precedent
+        on_complete_url = reverse(self.page_name_prefix + '-complete')
         if next:
-            on_complete_url = (
-                request.build_absolute_uri() + 'complete/?next=' + 
-                self.sign_done(next)
-            )
-        else:
-            on_complete_url = self.on_complete_url or \
-                request.build_absolute_uri() + 'complete/'
+            on_complete_url += '?next=' + self.sign_done(next)
         
         self.add_extension_args(request, auth_request)
         
@@ -235,7 +231,6 @@ Fzk0lpcjIQA7""".strip()
             }[openid_response.status](request, openid_response)
         
         self.set_user_session(request, response, user_session)
-        
         return response
     
     def do_debug(self, request):
