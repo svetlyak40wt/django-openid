@@ -38,3 +38,24 @@ class AutoRegisterTest(TestCase):
         self.assert_(AUTH_SESSION_KEY in session)
         self.assertEqual(1, User.objects.count())
 
+    def testDontCreateTwice(self):
+        "Simulate a successful registration"
+        openid_consumer = MyAutoRegistration()
+        openid_consumer.set_mock_response(
+            status = janrain_consumer.SUCCESS,
+            identity_url = 'http://simonwillison.net/',
+        )
+
+        def register():
+            clear_session()
+            response = self.client.get(reverse('oauto-complete'), {'openid-args': 'go-here'})
+            response = self.client.get(reverse('oauto-register'))
+            self.assertEqual(200, response.status_code)
+
+        register()
+        register()
+
+        session = SessionStore()
+        self.assert_(AUTH_SESSION_KEY in session)
+        self.assertEqual(1, User.objects.count())
+

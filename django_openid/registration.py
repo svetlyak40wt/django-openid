@@ -149,11 +149,15 @@ class AutoRegistration(AuthRegistration):
         openid = request.openid
 
         if openid is not None:
-            user_data = self.initial_from_sreg(openid.sreg)
-            user = User.objects.create(**user_data)
+            try:
+                user = User.objects.filter(openids__openid = openid.openid).get()
+            except User.DoesNotExist:
+                user_data = self.initial_from_sreg(openid.sreg)
+                user = User.objects.create(**user_data)
 
-            user.openids.create(openid = openid.openid)
-            user.set_unusable_password()
+                user.openids.create(openid = openid.openid)
+                user.set_unusable_password()
+
             self.log_in_user(request, user, openid)
         
         return self.render(request, self.register_template, {
