@@ -20,6 +20,7 @@ from openid.yadis import xri
 from django_openid.models import DjangoOpenIDStore
 from django_openid.utils import OpenID
 from django_openid import signed
+from urlparse import urljoin
 
 class SessionUserSessionMixin(object):
     def get_user_session(self, request):
@@ -179,7 +180,7 @@ Fzk0lpcjIQA7""".strip()
             return self.show_error(request, self.openid_invalid_message)
        
         absolute_url = request.build_absolute_uri()
-        trust_root = self.trust_root or reverse(self.page_name_prefix + '-index')
+        trust_root = self.trust_root or urljoin(absolute_url, reverse(self.page_name_prefix + '-index'))
         
         try:
             next = signed.loads(
@@ -193,7 +194,7 @@ Fzk0lpcjIQA7""".strip()
             next = next_override
         
         # Signed ?next= from the URL takes precedent
-        on_complete_url = reverse(self.page_name_prefix + '-complete')
+        on_complete_url = urljoin(absolute_url, reverse(self.page_name_prefix + '-complete'))
         if next:
             on_complete_url += '?next=' + self.sign_done(next)
         
