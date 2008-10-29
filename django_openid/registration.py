@@ -176,7 +176,7 @@ class AutoRegistration(AuthRegistration):
         or random md5 hash
         '''
         return super(AutoRegistration, self).suggest_nickname(nickname) or \
-               md5.md5(settings.SECRET_KEY + str(time.time())).hexdigest()
+               md5.md5(settings.SECRET_KEY + str(time.time())).hexdigest()[:30]
 
 from django.contrib.auth.models import User
 
