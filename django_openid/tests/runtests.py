@@ -27,6 +27,7 @@ ALWAYS_INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.comments',
     'django.contrib.admin',
+    'django_openid',
 ]
 
 def get_test_models():
@@ -58,11 +59,6 @@ def django_tests(verbosity, interactive, test_labels):
     settings.USE_I18N = True
     settings.LANGUAGE_CODE = 'en'
     settings.LOGIN_URL = '/accounts/login/'
-    settings.MIDDLEWARE_CLASSES = (
-        'django.contrib.sessions.middleware.SessionMiddleware',
-        'django.contrib.auth.middleware.AuthenticationMiddleware',
-        'django.middleware.common.CommonMiddleware',
-    )
     settings.SITE_ID = 1
 
     # Load all the ALWAYS_INSTALLED_APPS.

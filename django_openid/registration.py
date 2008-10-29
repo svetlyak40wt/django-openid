@@ -2,8 +2,11 @@ from django.http import HttpResponseRedirect
 from django import forms
 
 from django_openid.auth import AuthConsumer
+from django_openid.consumer import LoginConsumer
+from django.conf import settings
 
-import urlparse, re
+import urlparse, re, md5, time
+
 
 class AuthRegistration(AuthConsumer):
     already_signed_in_message = 'You are already signed in to this site'
@@ -127,6 +130,49 @@ class AuthRegistration(AuthConsumer):
         return self.show_message(
             request, 'Already signed in', self.already_signed_in_message
         )
+
+class AutoRegistration(AuthRegistration):
+    allow_non_openid_signups = False
+    register_template = 'django_openid/auto_register.html'
+    logo_path = '/openid/logo/'
+
+    def do_register(self, request, message=None):
+        # Show a registration / signup form, provided the user is not 
+        # already logged in
+        if not request.user.is_anonymous():
+            return self.show_already_signed_in(request)
+
+        # Spot incoming openid_url authentication requests
+        if request.POST.get('openid_url', None):
+            return self.do_login(request, next_override=request.path)
+
+        openid = request.openid
+
+        if openid is not None:
+            user_data = self.initial_from_sreg(openid.sreg)
+            user = User.objects.create(**user_data)
+
+            user.openids.create(openid = openid.openid)
+            user.set_unusable_password()
+            self.log_in_user(request, user, openid)
+        
+        return self.render(request, self.register_template, {
+            'message': message,
+            'openid': openid,
+            'logo': self.logo_path or (urlparse.urljoin(
+                request.path, '../logo/'
+            )),
+        })
+
+    on_logged_in = LoginConsumer.on_logged_in
+
+    def suggest_nickname(self, nickname):
+        '''
+        Return a suggested nickname that has not yet been taken
+        or random md5 hash
+        '''
+        return super(AutoRegistration, self).suggest_nickname(nickname) or \
+               md5.md5(settings.SECRET_KEY + str(time.time())).hexdigest()
 
 from django.contrib.auth.models import User
 

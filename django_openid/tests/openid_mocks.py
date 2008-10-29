@@ -3,6 +3,7 @@ Mock objects for the bits of the OpenID flow that would normally involve
 communicating with an external service.
 """
 from django_openid.consumer import Consumer, SessionConsumer, CookieConsumer
+from django_openid.registration import AutoRegistration
 
 class MockSession(dict):
     def __init__(self, **kwargs):
@@ -15,6 +16,10 @@ class MockAuthRequest(object):
     
     def redirectURL(self, trust_root, on_complete_url):
         return self.consumer.redirect_url
+
+    def addExtensionArg(self, namespace, key, value):
+        print 'addExtensionArg: ', namespace, key, value
+
 
 class MockOpenIDResponse(object):
     def __init__(self, status, identity_url):
@@ -68,3 +73,7 @@ class MySessionConsumer(MyConsumerMixin, SessionConsumer):
 
 class MyCookieConsumer(MyConsumerMixin, CookieConsumer):
     pass
+
+class MyAutoRegistration(MyConsumerMixin, AutoRegistration):
+    pass
+

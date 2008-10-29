@@ -5,4 +5,5 @@ urlpatterns = patterns('',
         (r'^session/', include('consumertests.session.urls')),
         (r'^cookie/', include('consumertests.cookie.urls')),
         (r'^urlconf/', include('consumertests.urlconf.urls')),
+        (r'^auto/', include('consumertests.autoregistration.urls')),
 )
