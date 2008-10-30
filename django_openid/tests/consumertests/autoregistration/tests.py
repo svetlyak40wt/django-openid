@@ -14,7 +14,7 @@ class AutoRegisterTest(TestCase):
         clear_session()
         super(AutoRegisterTest, self).setUp()
 
-    def testRegisterAndLogin(self):
+    def testCreateNewAccountOnLogin(self):
         "Simulate a successful registration"
         openid_consumer = MyAutoRegistration()
         openid_consumer.set_mock_response(
@@ -29,11 +29,11 @@ class AutoRegisterTest(TestCase):
         session = SessionStore()
         self.assert_('openids' in session)
 
-        self.assert_(AUTH_SESSION_KEY not in session)
-        self.assertEqual(0, User.objects.count())
+        #self.assert_(AUTH_SESSION_KEY not in session)
+        #self.assertEqual(0, User.objects.count())
 
-        response = self.client.get(reverse('oauto-register'))
-        self.assertEqual(200, response.status_code)
+        #response = self.client.get(reverse('oauto-register'))
+        #self.assertEqual(200, response.status_code)
 
         self.assert_(AUTH_SESSION_KEY in session)
         self.assertEqual(1, User.objects.count())

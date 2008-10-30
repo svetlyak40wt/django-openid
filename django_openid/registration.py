@@ -134,7 +134,7 @@ class AuthRegistration(AuthConsumer):
 class AutoRegistration(AuthRegistration):
     allow_non_openid_signups = False
     register_template = 'django_openid/auto_register.html'
-    logo_path = '/openid/logo/'
+    new_account_was_created_message = 'New account was created and associated with OpenID "%s"'
 
     def do_register(self, request, message=None):
         # Show a registration / signup form, provided the user is not 
@@ -146,29 +146,45 @@ class AutoRegistration(AuthRegistration):
         if request.POST.get('openid_url', None):
             return self.do_login(request, next_override=request.path)
 
-        openid = request.openid
+#        openid = request.openid
 
-        if openid is not None:
-            try:
-                user = User.objects.filter(openids__openid = openid.openid).get()
-            except User.DoesNotExist:
-                user_data = self.initial_from_sreg(openid.sreg)
-                user = User.objects.create(**user_data)
+#        if openid is not None:
+#            try:
+#                user = User.objects.filter(openids__openid = openid.openid).get()
+#            except User.DoesNotExist:
+#                user_data = self.initial_from_sreg(openid.sreg)
+#                user = User.objects.create(**user_data)#
 
-                user.openids.create(openid = openid.openid)
-                user.set_unusable_password()
+#                user.openids.create(openid = openid.openid)
+#                user.set_unusable_password()
 
-            self.log_in_user(request, user, openid)
-        
+#            self.log_in_user(request, user, openid)
+
         return self.render(request, self.register_template, {
             'message': message,
-            'openid': openid,
-            'logo': self.logo_path or (urlparse.urljoin(
-                request.path, '../logo/'
-            )),
+            'openid': request.openid,
+            'logo': self.get_logo_url(request),
         })
 
-    on_logged_in = LoginConsumer.on_logged_in
+    #on_logged_in = AuthConsumer.on_logged_in
+
+    def show_unknown_openid(self, request, openid):
+        '''Just create a new account for this user, and log him in.'''
+        openids = request.session[self.session_key]
+        if openids:
+            openid = openids[-1]
+            user_data = self.initial_from_sreg(openid.sreg)
+            user = User.objects.create(**user_data)
+
+            user.openids.create(openid = openid.openid)
+            user.set_unusable_password()
+
+            self.log_in_user(request, user, openid)
+
+        response = self.redirect_if_valid_next(request)
+        if not response:
+            response = HttpResponseRedirect(self.redirect_after_login)
+        return response
 
     def suggest_nickname(self, nickname):
         '''
