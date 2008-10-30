@@ -29,12 +29,6 @@ class AutoRegisterTest(TestCase):
         session = SessionStore()
         self.assert_('openids' in session)
 
-        #self.assert_(AUTH_SESSION_KEY not in session)
-        #self.assertEqual(0, User.objects.count())
-
-        #response = self.client.get(reverse('oauto-register'))
-        #self.assertEqual(200, response.status_code)
-
         self.assert_(AUTH_SESSION_KEY in session)
         self.assertEqual(1, User.objects.count())
 
@@ -49,8 +43,7 @@ class AutoRegisterTest(TestCase):
         def register():
             clear_session()
             response = self.client.get(reverse('oauto-complete'), {'openid-args': 'go-here'})
-            response = self.client.get(reverse('oauto-register'))
-            self.assertEqual(200, response.status_code)
+            self.assertRedirects(response, 'http://testserver/')
 
         register()
         register()

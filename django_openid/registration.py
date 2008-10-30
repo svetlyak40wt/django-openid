@@ -2,10 +2,40 @@ from django.http import HttpResponseRedirect
 from django import forms
 
 from django_openid.auth import AuthConsumer
-#from django_openid.consumer import LoginConsumer
 from django.conf import settings
 
 import re, md5, time
+
+def _suggest_nickname(nickname):
+    "Return a suggested nickname that has not yet been taken"
+    from django.contrib.auth.models import User
+    if not nickname:
+        return ''
+    original_nickname = nickname
+    suffix = None
+    while User.objects.filter(username = nickname).count():
+        if suffix is None:
+            suffix = 1
+        else:
+            suffix += 1
+        nickname = original_nickname + str(suffix)
+    return nickname
+
+def _initial_from_sreg(sreg, suggest_nickname = _suggest_nickname):
+    "Maps sreg to data for populating registration form"
+    fullname = sreg.get('fullname', '')
+    first_name, last_name = '', ''
+    if fullname:
+        bits = fullname.split()
+        first_name = bits[0]
+        if len(bits) > 1:
+            last_name = ' '.join(bits[1:])
+    return {
+        'username': suggest_nickname(sreg.get('nickname', '')),
+        'first_name': first_name,
+        'last_name': last_name,
+        'email': sreg.get('email', ''),
+    }
 
 
 class AuthRegistration(AuthConsumer):
@@ -71,7 +101,7 @@ class AuthRegistration(AuthConsumer):
                 return self.log_in_user(request, user, openid)
         else:
             form = RegistrationForm(
-                initial = request.openid and self.initial_from_sreg(
+                initial = request.openid and _initial_from_sreg(
                     request.openid.sreg
                 ) or {},
                 openid = openid,
@@ -87,37 +117,6 @@ class AuthRegistration(AuthConsumer):
             'action': request.path,
         })
     
-    def initial_from_sreg(self, sreg):
-        "Maps sreg to data for populating registration form"
-        fullname = sreg.get('fullname', '')
-        first_name, last_name = '', ''
-        if fullname:
-            bits = fullname.split()
-            first_name = bits[0]
-            if len(bits) > 1:
-                last_name = ' '.join(bits[1:])
-        return {
-            'username': self.suggest_nickname(sreg.get('nickname', '')),
-            'first_name': first_name,
-            'last_name': last_name,
-            'email': sreg.get('email', ''),
-        }
-    
-    def suggest_nickname(self, nickname):
-        "Return a suggested nickname that has not yet been taken"
-        from django.contrib.auth.models import User
-        if not nickname:
-            return ''
-        original_nickname = nickname
-        suffix = None
-        while User.objects.filter(username = nickname).count():
-            if suffix is None:
-                suffix = 1
-            else:
-                suffix += 1
-            nickname = original_nickname + str(suffix)
-        return nickname
-    
     def show_unknown_openid(self, request, openid):
         # If the user gets here, they have attempted to log in using an 
         # OpenID BUT it's an OpenID we have never seen before - so show 
@@ -129,49 +128,17 @@ class AuthRegistration(AuthConsumer):
             request, 'Already signed in', self.already_signed_in_message
         )
 
-class AutoRegistration(AuthRegistration):
+class AutoRegistration(AuthConsumer):
     allow_non_openid_signups = False
     register_template = 'django_openid/auto_register.html'
     new_account_was_created_message = 'New account was created and associated with OpenID "%s"'
-
-    def do_register(self, request, message=None):
-        # Show a registration / signup form, provided the user is not 
-        # already logged in
-        if not request.user.is_anonymous():
-            return self.show_already_signed_in(request)
-
-        # Spot incoming openid_url authentication requests
-        if request.POST.get('openid_url', None):
-            return self.do_login(request, next_override=request.path)
-
-#        openid = request.openid
-
-#        if openid is not None:
-#            try:
-#                user = User.objects.filter(openids__openid = openid.openid).get()
-#            except User.DoesNotExist:
-#                user_data = self.initial_from_sreg(openid.sreg)
-#                user = User.objects.create(**user_data)#
-
-#                user.openids.create(openid = openid.openid)
-#                user.set_unusable_password()
-
-#            self.log_in_user(request, user, openid)
-
-        return self.render(request, self.register_template, {
-            'message': message,
-            'openid': request.openid,
-            'logo': self.get_logo_url(request),
-        })
-
-    #on_logged_in = AuthConsumer.on_logged_in
 
     def show_unknown_openid(self, request, openid):
         '''Just create a new account for this user, and log him in.'''
         openids = request.session[self.session_key]
         if openids:
             openid = openids[-1]
-            user_data = self.initial_from_sreg(openid.sreg)
+            user_data = _initial_from_sreg(openid.sreg, self.suggest_nickname)
             user = User.objects.create(**user_data)
 
             user.openids.create(openid = openid.openid)
@@ -189,7 +156,7 @@ class AutoRegistration(AuthRegistration):
         Return a suggested nickname that has not yet been taken
         or random md5 hash
         '''
-        return super(AutoRegistration, self).suggest_nickname(nickname) or \
+        return _suggest_nickname(nickname) or \
                md5.md5(settings.SECRET_KEY + str(time.time())).hexdigest()[:30]
 
 from django.contrib.auth.models import User
