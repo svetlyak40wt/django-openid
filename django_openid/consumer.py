@@ -125,10 +125,14 @@ Fzk0lpcjIQA7""".strip()
             next = ''
         return self.render(request, self.login_template, {
             'action': request.path,
-            'logo': self.logo_path or (request.path + 'logo/'),
+            'logo': self.get_logo_url(request),
             'message': message,
             'next': next and request.REQUEST.get('next', '') or None,
         })
+
+    def get_logo_url(self, request):
+        return self.logo_path or urljoin(request.build_absolute_uri(),
+                                    reverse(self.page_name_prefix + '-logo'))
     
     def show_error(self, request, message):
         return self.render(request, self.error_template, {
@@ -300,7 +304,7 @@ class SessionConsumer(LoginConsumer):
     session_key = 'openids'
     
     def on_success(self, request, identity_url, openid_response):
-        if 'openids' not in request.session.keys():
+        if self.session_key not in request.session.keys():
             request.session[self.session_key] = []
         # Eliminate any duplicates
         request.session[self.session_key] = [

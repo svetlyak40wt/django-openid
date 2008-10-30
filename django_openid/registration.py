@@ -2,10 +2,10 @@ from django.http import HttpResponseRedirect
 from django import forms
 
 from django_openid.auth import AuthConsumer
-from django_openid.consumer import LoginConsumer
+#from django_openid.consumer import LoginConsumer
 from django.conf import settings
 
-import urlparse, re, md5, time
+import re, md5, time
 
 
 class AuthRegistration(AuthConsumer):
@@ -82,9 +82,7 @@ class AuthRegistration(AuthConsumer):
             'form': form,
             'message': message,
             'openid': request.openid,
-            'logo': self.logo_path or (urlparse.urljoin(
-                request.path, '../logo/'
-            )),
+            'logo': self.get_logo_url(request),
             'no_thanks': self.sign_done(request.path),
             'action': request.path,
         })

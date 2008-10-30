@@ -1,8 +1,9 @@
 from django.http import HttpResponseRedirect as Redirect
 from django_openid import consumer, signed
 from django.conf import settings
+from django.core.urlresolvers import reverse
 
-import urlparse
+from urlparse import urljoin
 
 # TODO: prevent multiple associations of same OPenID
 
@@ -102,7 +103,7 @@ class AuthConsumer(consumer.SessionConsumer):
         except ValueError:
             next = ''
         return self.render(request, 'django_openid/associate.html', {
-            'action': urlparse.urljoin(request.path, '../associate/'),
+            'action': urljoin(request.path, reverse(self.page_name_prefix + '-associate')),
             'user': request.user,
             'specific_openid': openid,
             'next': next and request.REQUEST.get('next', '') or None,
