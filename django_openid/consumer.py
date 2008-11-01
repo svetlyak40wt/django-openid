@@ -12,6 +12,7 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.shortcuts import render_to_response
 from django.core.urlresolvers import reverse
+from django.conf import settings
 
 from openid.consumer import consumer
 from openid.consumer.discover import DiscoveryFailure
@@ -92,7 +93,6 @@ class Consumer(object):
     failure_message = 'Failure: %s'
     setup_needed_message = 'Setup needed'
     
-    salt_next = 'salt-next-token' # Adds extra saltiness to the ?next= salt
     xri_enabled = False
     on_complete_url = None
     trust_root = None # If None, full URL to endpoint is used
@@ -106,7 +106,7 @@ EAQ4kVuEE2AIGAOPQQAQwXCfS8KQGAwMjIYIUSi03B7iJ+AcnmclHg4TAh0QDzIpCw4WGBUZeikD
 Fzk0lpcjIQA7""".strip()
     
     def sign_done(self, url):
-        return signed.dumps(url, extra_salt = self.salt_next)
+        return signed.dumps(url, extra_salt = settings.SECRET_KEY)
     
     def render(self, request, template, context=None):
         context = context or {}
@@ -119,7 +119,7 @@ Fzk0lpcjIQA7""".strip()
     def show_login(self, request, message=None):
         try:
             next = signed.loads(
-                request.REQUEST.get('next', ''), extra_salt=self.salt_next
+                request.REQUEST.get('next', ''), extra_salt=settings.SECRET_KEY
             )
         except ValueError:
             next = ''
@@ -188,7 +188,7 @@ Fzk0lpcjIQA7""".strip()
         
         try:
             next = signed.loads(
-                request.POST.get('next', ''), extra_salt=self.salt_next
+                request.POST.get('next', ''), extra_salt=settings.SECRET_KEY
             )
         except ValueError:
             next = None
@@ -247,7 +247,7 @@ Fzk0lpcjIQA7""".strip()
         "Logic for checking if a signed ?next= token is included in request"
         try:
             next = signed.loads(
-                request.REQUEST.get('next', ''), extra_salt=self.salt_next
+                request.REQUEST.get('next', ''), extra_salt=settings.SECRET_KEY
             )
             return HttpResponseRedirect(next)
         except ValueError:

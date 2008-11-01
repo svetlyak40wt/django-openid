@@ -98,7 +98,7 @@ class AuthConsumer(consumer.SessionConsumer):
             return self.need_authenticated_user(request)
         try:
             next = signed.loads(
-                request.REQUEST.get('next', ''), extra_salt=self.salt_next
+                request.REQUEST.get('next', ''), extra_salt=settings.SECRET_KEY
             )
         except ValueError:
             next = ''
