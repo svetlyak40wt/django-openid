@@ -156,8 +156,10 @@ class AutoRegistration(AuthConsumer):
         Return a suggested nickname that has not yet been taken
         or random md5 hash
         '''
-        return _suggest_nickname(nickname) or \
-               md5.md5(settings.SECRET_KEY + str(time.time())).hexdigest()[:30]
+        suggested = _suggest_nickname(nickname)
+        if not suggested:
+            suggested = 'oid#' + md5.md5(settings.SECRET_KEY + str(time.time())).hexdigest()[:26]
+        return suggested
 
 from django.contrib.auth.models import User
 
