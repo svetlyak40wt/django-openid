@@ -132,6 +132,7 @@ class AutoRegistration(AuthConsumer):
     allow_non_openid_signups = False
     register_template = 'django_openid/auto_register.html'
     new_account_was_created_message = 'New account was created and associated with OpenID "%s"'
+    sreg = ['nickname', 'email', 'fullname']
 
     def show_unknown_openid(self, request, openid):
         '''Just create a new account for this user, and log him in.'''
