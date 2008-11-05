@@ -20,6 +20,7 @@ from openid.yadis import xri
 
 from django_openid.models import DjangoOpenIDStore
 from django_openid.utils import OpenID
+from django_openid.forms import OpenIDLoginForm
 from django_openid import signed
 from urlparse import urljoin
 
@@ -117,6 +118,7 @@ Fzk0lpcjIQA7""".strip()
         return self.do_login(request)
     
     def show_login(self, request, message=None):
+        from forms import OpenIDLoginForm
         try:
             next = signed.loads(
                 request.REQUEST.get('next', ''), extra_salt=settings.SECRET_KEY
@@ -124,6 +126,7 @@ Fzk0lpcjIQA7""".strip()
         except ValueError:
             next = ''
         return self.render(request, self.login_template, {
+            'form': OpenIDLoginForm(),
             'action': request.path,
             'logo': self.get_logo_url(request),
             'message': message,
@@ -166,10 +169,10 @@ Fzk0lpcjIQA7""".strip()
     def do_login(self, request, next_override=None):
         if request.method == 'GET':
             return self.show_login(request)
-        
-        user_url = request.POST.get('openid_url', None)
-        if not user_url:
+        form = OpenIDLoginForm(request.POST)
+        if not form.is_valid():
             return self.show_login(request, self.openid_required_message)
+        user_url = form.cleaned_data['openid_url']
         
         if xri.identifierScheme(user_url) == 'XRI' and not self.xri_enabled:
             return self.show_login(request, self.xri_disabled_message)
