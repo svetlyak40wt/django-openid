@@ -37,5 +37,5 @@ class OpenIDInput(forms.MultiWidget):
         return [None, None]
 
 class OpenIDLoginForm(forms.Form):
-    openid_url = forms.URLField(widget=OpenIDInput)
+    openid_url = forms.URLField(widget=OpenIDInput, initial='http://some.openid.com')
 
