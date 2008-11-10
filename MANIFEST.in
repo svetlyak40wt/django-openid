@@ -1,0 +1,2 @@
+recursive-include django_openid/templates *.html
+recursive-include django_openid/docs *.txt
