@@ -4,6 +4,7 @@ communicating with an external service.
 """
 from django_openid.consumer import Consumer, SessionConsumer, CookieConsumer
 from django_openid.registration import AutoRegistration
+from django_openid.auth import AuthConsumer
 
 class MockSession(dict):
     def __init__(self, **kwargs):
@@ -76,4 +77,7 @@ class MyCookieConsumer(MyConsumerMixin, CookieConsumer):
 
 class MyAutoRegistration(MyConsumerMixin, AutoRegistration):
     page_name_prefix='oauto'
+    pass
 
+class MyAuthConsumer(MyConsumerMixin, AuthConsumer):
+    pass

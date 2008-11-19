@@ -36,14 +36,13 @@ class AuthConsumer(consumer.SessionConsumer):
             User.objects.filter(openids__openid = identity_url).distinct()
         )
     
-    def log_in_user(self, request, user, openid):
+    def log_in_user(self, request, user):
         # Remember, openid might be None (after registration with none set)
         from django.contrib.auth import login
         # Nasty but necessary - annotate user and pretend it was the regular 
         # auth backend. This is needed so django.contrib.auth.get_user works:
         user.backend = 'django.contrib.auth.backends.ModelBackend'
         login(request, user)
-        return self.on_login_complete(request, user, openid)
     
     def on_login_complete(self, request, user, openid):
         response = self.redirect_if_valid_next(request)
@@ -71,13 +70,43 @@ class AuthConsumer(consumer.SessionConsumer):
         if matches:
             # If there's only one match, log them in as that user
             if len(matches) == 1:
-                return self.log_in_user(request, matches[0], openid)
+                self.log_in_user(request, matches[0])
+                return self.on_login_complete(request, matches[0], openid)
             # Otherwise, let them to pick which account they want to log in as
             else:
                 return self.show_pick_account(request, openid)
         else:
             # We don't know anything about this openid
             return self.show_unknown_openid(request, openid)
+    
+    def show_pick_account(self, request, openid):
+        """
+        The user's OpenID is associated with more than one account - ask them
+        which one they would like to sign in as
+        """
+        return self.render(request, 'django_openid/pick_account.html', {
+            'action': urlparse.urljoin(request.path, '../pick/'),
+            'openid': openid,
+            'users': self.lookup_openid(request, openid),
+        })
+    
+    def do_pick(self, request):
+        # User MUST be logged in with an OpenID and it MUST be associated
+        # with the selected account. The error messages in here are a bit 
+        # weird, unfortunately.
+        if not request.openid:
+            return self.show_error(request, 'You should be logged in here')
+        users = self.lookup_openid(request, request.openid.openid)
+        try:
+            user_id = [
+                v.split('-')[1] for v in request.POST if v.startswith('user-')
+            ][0]
+            user = [u for u in users if str(u.id) == user_id][0]
+        except IndexError, e:
+            return self.show_error(request, "You didn't pick a valid user")
+        # OK, log them in
+        self.log_in_user(request, user)
+        return self.on_login_complete(request, user, request.openid.openid)
     
     def on_logged_out(self, request):
         # After logging out the OpenID, log out the user auth session too

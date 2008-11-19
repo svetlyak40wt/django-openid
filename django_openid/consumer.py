@@ -17,7 +17,6 @@ from django.conf import settings
 from openid.consumer import consumer
 from openid.consumer.discover import DiscoveryFailure
 from openid.yadis import xri
-
 from django_openid.models import DjangoOpenIDStore
 from django_openid.utils import OpenID
 from django_openid.forms import OpenIDLoginForm
@@ -114,8 +113,8 @@ Fzk0lpcjIQA7""".strip()
         context['base_template'] = self.base_template
         return render_to_response(template, context)
     
-    def do_index(self, request):
-        return self.do_login(request)
+    def do_index(self, request, extra_message=None):
+        return self.do_login(request, extra_message)
     
     def show_login(self, request, message=None):
         from forms import OpenIDLoginForm
@@ -137,9 +136,10 @@ Fzk0lpcjIQA7""".strip()
         return self.logo_path or urljoin(request.build_absolute_uri(),
                                     reverse(self.page_name_prefix + '-logo'))
     
-    def show_error(self, request, message):
+    def show_error(self, request, message, exception=None):
         return self.render(request, self.error_template, {
             'message': message,
+            'exception': exception,
         })
     
     def show_message(self, request, title, message):
@@ -166,15 +166,50 @@ Fzk0lpcjIQA7""".strip()
             namespace = self.extension_namespaces.get(namespace, namespace)
             auth_request.addExtensionArg(namespace, key, value)
     
-    def do_login(self, request, next_override=None):
+    def get_on_complete_url(self, request, on_complete_url=None):
+        "Derives an appropriate on_complete_url from the request"
+        on_complete_url = on_complete_url or self.on_complete_url or \
+            urljoin(request.path, reverse(self.page_name_prefix + '-complete'))
+        on_complete_url = self.ensure_absolute_url(request, on_complete_url)
+        try:
+            next = signed.loads(
+                request.POST.get('next', ''), extra_salt=self.salt_next
+            )
+        except ValueError:
+            return on_complete_url
+        
+        if '?' not in on_complete_url:
+            on_complete_url += '?next=' + self.sign_done(next)
+        else:
+            on_complete_url += '&next=' + self.sign_done(next)
+        return on_complete_url
+    
+    def get_trust_root(self, request, trust_root=None):
+        "Derives an appropriate trust_root from the request"
+        trust_root = trust_root or self.trust_root or \
+            request.build_absolute_uri()
+        return self.ensure_absolute_url(
+            request, trust_root
+        )
+    
+    def do_login(self, request, extra_message=None):
         if request.method == 'GET':
-            return self.show_login(request)
-        form = OpenIDLoginForm(request.POST)
-        if not form.is_valid():
+            return self.show_login(request, extra_message)
+        
+        user_url = request.POST.get('openid_url', None)
+        if not user_url:
             return self.show_login(request, self.openid_required_message)
         user_url = form.cleaned_data['openid_url']
         
-        if xri.identifierScheme(user_url) == 'XRI' and not self.xri_enabled:
+        return self.start_openid_process(request, user_url)
+    
+    def is_xri(self, user_url):
+        return xri.identifierScheme(user_url) == 'XRI'
+    
+    def start_openid_process(
+            self, request, user_url, on_complete_url=None, trust_root=None
+        ):
+        if self.is_xri(user_url) and not self.xri_enabled:
             return self.show_login(request, self.xri_disabled_message)
         
         user_session = self.get_user_session(request)
@@ -183,29 +218,13 @@ Fzk0lpcjIQA7""".strip()
             auth_request = self.get_consumer(
                 request, user_session
             ).begin(user_url)
-        except DiscoveryFailure:
-            return self.show_error(request, self.openid_invalid_message)
-       
-        absolute_url = request.build_absolute_uri()
-        trust_root = self.trust_root or urljoin(absolute_url, reverse(self.page_name_prefix + '-index'))
-        
-        try:
-            next = signed.loads(
-                request.POST.get('next', ''), extra_salt=settings.SECRET_KEY
-            )
-        except ValueError:
-            next = None
-        
-        # next_override parameter over-rides the above
-        if next_override:
-            next = next_override
-        
-        # Signed ?next= from the URL takes precedent
-        on_complete_url = urljoin(absolute_url, reverse(self.page_name_prefix + '-complete'))
-        if next:
-            on_complete_url += '?next=' + self.sign_done(next)
+        except DiscoveryFailure, e:
+            return self.show_error(request, self.openid_invalid_message, e)
         
         self.add_extension_args(request, auth_request)
+        
+        trust_root = self.get_trust_root(request, trust_root)
+        on_complete_url = self.get_on_complete_url(request, on_complete_url)
         
         redirect_url = auth_request.redirectURL(trust_root, on_complete_url)
         response = HttpResponseRedirect(redirect_url)
@@ -218,7 +237,7 @@ Fzk0lpcjIQA7""".strip()
     def set_user_session(self, request, response, user_session):
         pass
     
-    def do_complete(self, request):
+    def dispatch_openid_complete(self, request, handlers):
         user_session = self.get_user_session(request)
         
         openid_response = self.get_consumer(
@@ -228,18 +247,24 @@ Fzk0lpcjIQA7""".strip()
             request.build_absolute_uri().split('?')[0] # to verify return_to
         )
         if openid_response.status == consumer.SUCCESS:
-            response = self.on_success(
+            response = handlers[consumer.SUCCESS](
                 request, openid_response.identity_url, openid_response
             )
         else:
-            response = {
-                consumer.CANCEL: self.on_cancel,
-                consumer.FAILURE: self.on_failure,
-                consumer.SETUP_NEEDED: self.on_setup_needed,
-            }[openid_response.status](request, openid_response)
+            response = handlers[openid_response.status](
+                request, openid_response
+            )
         
         self.set_user_session(request, response, user_session)
         return response
+    
+    def do_complete(self, request):
+        return self.dispatch_openid_complete(request, {
+            consumer.SUCCESS: self.on_success,
+            consumer.CANCEL: self.on_cancel,
+            consumer.FAILURE: self.on_failure,
+            consumer.SETUP_NEEDED: self.on_setup_needed
+        })
     
     def do_debug(self, request):
         if not settings.DEBUG:
@@ -248,12 +273,15 @@ Fzk0lpcjIQA7""".strip()
     
     def redirect_if_valid_next(self, request):
         "Logic for checking if a signed ?next= token is included in request"
+        print "redirect_if_valid_next"
         try:
             next = signed.loads(
                 request.REQUEST.get('next', ''), extra_salt=settings.SECRET_KEY
             )
+            print "  ... redirecting"
             return HttpResponseRedirect(next)
         except ValueError:
+            print "  ... no valid next token %s" % request.REQUEST.get('next')
             return None
     
     def on_success(self, request, identity_url, openid_response):
@@ -279,13 +307,24 @@ Fzk0lpcjIQA7""".strip()
         return HttpResponse(
             self.OPENID_LOGO_BASE_64.decode('base64'), mimetype='image/gif'
         )
+    
+    def ensure_absolute_url(self, request, url):
+        if not (url.startswith('http://') or url.startswith('https://')):
+            url = request.build_absolute_uri(url)
+        return url
 
 class LoginConsumer(Consumer):
     redirect_after_login = '/'
     redirect_after_logout = '/'
     
-    def on_success(self, *args):
+    def persist_openid(self, request, response, openid_object):
         assert False, 'LoginConsumer must be subclassed before use'
+    
+    def on_success(self, request, identity_url, openid_response):
+        openid_object = OpenID.from_openid_response(openid_response)
+        response = self.on_logged_in(request, identity_url, openid_response)
+        self.persist_openid(request, response, openid_object)
+        return response
     
     def on_logged_in(self, request, identity_url, openid_response):
         response = self.redirect_if_valid_next(request)
@@ -306,19 +345,16 @@ class SessionConsumer(LoginConsumer):
     """
     session_key = 'openids'
     
-    def on_success(self, request, identity_url, openid_response):
+    def persist_openid(self, request, response, openid_object):
         if self.session_key not in request.session.keys():
             request.session[self.session_key] = []
         # Eliminate any duplicates
         request.session[self.session_key] = [
             o for o in request.session[self.session_key] 
-            if o.openid != identity_url
+            if o.openid != openid_object.openid
         ]
-        request.session[self.session_key].append(
-            OpenID.from_openid_response(openid_response)
-        )
+        request.session[self.session_key].append(openid_object)
         request.session.modified = True
-        return self.on_logged_in(request, identity_url, openid_response)
     
     def do_logout(self, request):
         openid = request.GET.get('openid', '').strip()
@@ -359,33 +395,25 @@ class CookieConsumer(CookieUserSessionMixin, LoginConsumer):
     cookie_domain = None
     cookie_secure = None
     
-    secret_key = None # If none, uses django.conf.settings.SECRET_KEY
-    
-    def set_cookie(self, request, response, cookie_value):
-        response.set_cookie(
-            key = self.cookie_key,
-            value = cookie_value,
-            max_age = self.cookie_max_age,
-            expires = self.cookie_expires,
-            path = self.cookie_path,
-            domain = self.cookie_domain,
-            secure = self.cookie_secure,
-        )
+    extra_salt = 'cookie-consumer'
     
     def delete_cookie(self, response):
         response.delete_cookie(
             self.cookie_key, self.cookie_path, self.cookie_domain
         )
     
-    def on_success(self, request, identity_url, openid_response):
-        openid = OpenID.from_openid_response(openid_response)
-        response = self.on_logged_in(request, identity_url, openid_response)
-        self.set_cookie(
-            request, response, signed.dumps(
-                openid, self.secret_key, compress = True
-            )
+    def persist_openid(self, request, response, openid_object):
+        response.set_cookie(
+            key = self.cookie_key,
+            value = signed.dumps(
+                openid_object, compress = True, extra_salt = self.extra_salt
+            ),
+            max_age = self.cookie_max_age,
+            expires = self.cookie_expires,
+            path = self.cookie_path,
+            domain = self.cookie_domain,
+            secure = self.cookie_secure,
         )
-        return response
     
     def do_logout(self, request):
         response = self.on_logged_out(request)
@@ -397,7 +425,7 @@ class CookieConsumer(CookieUserSessionMixin, LoginConsumer):
             raise Http404
         if self.cookie_key in request.COOKIES:
             obj = signed.loads(
-                request.COOKIES[self.cookie_key], self.secret_key
+                request.COOKIES[self.cookie_key], extra_salt = self.extra_salt
             )
             assert False, (obj, obj.__dict__)
         assert False, 'no cookie named %s' % self.cookie_key
@@ -410,7 +438,9 @@ class CookieConsumer(CookieUserSessionMixin, LoginConsumer):
         cookie_value = request.COOKIES.get(self.cookie_key, '')
         if cookie_value:
             try:
-                request.openid = signed.loads(cookie_value, self.secret_key)
+                request.openid = signed.loads(
+                    cookie_value, extra_salt = self.extra_salt
+                )
                 request.openids = [request.openid]
             except ValueError: # Signature failed
                 self._cookie_needs_deleting = True
