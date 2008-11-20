@@ -56,7 +56,7 @@ class AuthConsumer(consumer.SessionConsumer):
             response = Redirect(self.after_login_redirect_url)
         return response
     
-    def on_logged_in(self, request, openid, openid_response):
+    def on_logged_in(self, request, openid, openid_object):
         # Do we recognise their OpenID?
         matches = self.lookup_openid(request, openid)
         # Are they logged in already?
@@ -77,7 +77,7 @@ class AuthConsumer(consumer.SessionConsumer):
                 return self.show_pick_account(request, openid)
         else:
             # We don't know anything about this openid
-            return self.show_unknown_openid(request, openid)
+            return self.show_unknown_openid(request, openid_object)
     
     def show_pick_account(self, request, openid):
         """
@@ -85,7 +85,7 @@ class AuthConsumer(consumer.SessionConsumer):
         which one they would like to sign in as
         """
         return self.render(request, 'django_openid/pick_account.html', {
-            'action': urlparse.urljoin(request.path, '../pick/'),
+            'action': urljoin(request.path, reverse(self.page_name_prefix + '-pick')),
             'openid': openid,
             'users': self.lookup_openid(request, openid),
         })
@@ -115,10 +115,10 @@ class AuthConsumer(consumer.SessionConsumer):
         logout(request)
         return response
     
-    def show_unknown_openid(self, request, openid):
+    def show_unknown_openid(self, request, openid_object):
         # This can be over-ridden to show a registration form
         return self.show_message(
-            request, 'Unknown OpenID', '%s is an unknown OpenID' % openid
+            request, 'Unknown OpenID', '%s is an unknown OpenID' % openid_object.openid
         )
     
     def show_associate(self, request, openid=None):

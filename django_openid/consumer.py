@@ -173,7 +173,7 @@ Fzk0lpcjIQA7""".strip()
         on_complete_url = self.ensure_absolute_url(request, on_complete_url)
         try:
             next = signed.loads(
-                request.POST.get('next', ''), extra_salt=self.salt_next
+                request.POST.get('next', ''), extra_salt=settings.SECRET_KEY
             )
         except ValueError:
             return on_complete_url
@@ -187,7 +187,7 @@ Fzk0lpcjIQA7""".strip()
     def get_trust_root(self, request, trust_root=None):
         "Derives an appropriate trust_root from the request"
         trust_root = trust_root or self.trust_root or \
-            request.build_absolute_uri()
+            urljoin(request.build_absolute_uri(), reverse(self.page_name_prefix + '-index'))
         return self.ensure_absolute_url(
             request, trust_root
         )
@@ -195,10 +195,10 @@ Fzk0lpcjIQA7""".strip()
     def do_login(self, request, extra_message=None):
         if request.method == 'GET':
             return self.show_login(request, extra_message)
-        
-        user_url = request.POST.get('openid_url', None)
-        if not user_url:
-            return self.show_login(request, self.openid_required_message)
+
+        form = OpenIDLoginForm(request.POST)
+        if not form.is_valid():
+            return self.show_login(request, self.openid_invalid_message)
         user_url = form.cleaned_data['openid_url']
         
         return self.start_openid_process(request, user_url)
@@ -322,11 +322,11 @@ class LoginConsumer(Consumer):
     
     def on_success(self, request, identity_url, openid_response):
         openid_object = OpenID.from_openid_response(openid_response)
-        response = self.on_logged_in(request, identity_url, openid_response)
+        response = self.on_logged_in(request, identity_url, openid_object)
         self.persist_openid(request, response, openid_object)
         return response
     
-    def on_logged_in(self, request, identity_url, openid_response):
+    def on_logged_in(self, request, identity_url, openid_object):
         response = self.redirect_if_valid_next(request)
         if not response:
             response = HttpResponseRedirect(self.redirect_after_login)
@@ -395,7 +395,6 @@ class CookieConsumer(CookieUserSessionMixin, LoginConsumer):
     cookie_domain = None
     cookie_secure = None
     
-    extra_salt = 'cookie-consumer'
     
     def delete_cookie(self, response):
         response.delete_cookie(
@@ -406,7 +405,7 @@ class CookieConsumer(CookieUserSessionMixin, LoginConsumer):
         response.set_cookie(
             key = self.cookie_key,
             value = signed.dumps(
-                openid_object, compress = True, extra_salt = self.extra_salt
+                openid_object, compress = True, extra_salt = settings.SECRET_KEY
             ),
             max_age = self.cookie_max_age,
             expires = self.cookie_expires,
@@ -425,7 +424,7 @@ class CookieConsumer(CookieUserSessionMixin, LoginConsumer):
             raise Http404
         if self.cookie_key in request.COOKIES:
             obj = signed.loads(
-                request.COOKIES[self.cookie_key], extra_salt = self.extra_salt
+                request.COOKIES[self.cookie_key], extra_salt = settings.SECRET_KEY
             )
             assert False, (obj, obj.__dict__)
         assert False, 'no cookie named %s' % self.cookie_key
@@ -439,7 +438,7 @@ class CookieConsumer(CookieUserSessionMixin, LoginConsumer):
         if cookie_value:
             try:
                 request.openid = signed.loads(
-                    cookie_value, extra_salt = self.extra_salt
+                    cookie_value, extra_salt = settings.SECRET_KEY
                 )
                 request.openids = [request.openid]
             except ValueError: # Signature failed

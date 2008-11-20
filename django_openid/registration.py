@@ -6,6 +6,8 @@ from django.conf import settings
 from django_openid.utils import OpenID
 
 from openid.consumer import consumer
+
+from urlparse import urljoin
 import re, md5, time
 
 def _suggest_nickname(nickname):
@@ -88,7 +90,7 @@ class RegistrationConsumer(AuthConsumer):
                 response = self.show_i_have_logged_you_in(request)
             else:
                 response = HttpResponseRedirect(urlparse.urljoin(
-                    request.path, '../register/'
+                    request.path, reverse(self.page_name_prefix + '-register')
                 ))
             self.persist_openid(request, response, openid_object)
             return response
@@ -129,7 +131,7 @@ class RegistrationConsumer(AuthConsumer):
             return self.start_openid_process(request,
                 user_url = request.POST.get('openid_url'),
                 on_complete_url = urlparse.urljoin(
-                    request.path, '../register_complete/'
+                    request.path, reverse(self.page_name_prefix + '-register_complete')
                 ),
                 trust_root = urlparse.urljoin(request.path, '..')
             )
@@ -174,7 +176,7 @@ class RegistrationConsumer(AuthConsumer):
             'action': request.path,
         })
     
-    def show_unknown_openid(self, request, openid):
+    def show_unknown_openid(self, request, openid_object):
         # If the user gets here, they have attempted to log in using an 
         # OpenID BUT it's an OpenID we have never seen before - so show 
         # them the index page but with an additional message
@@ -191,22 +193,20 @@ class AutoRegistration(AuthConsumer):
     new_account_was_created_message = 'New account was created and associated with OpenID "%s"'
     sreg = ['nickname', 'email', 'fullname']
 
-    def show_unknown_openid(self, request, openid):
+    def show_unknown_openid(self, request, openid_object):
         '''Just create a new account for this user, and log him in.'''
-        openids = request.session[self.session_key]
-        if openids:
-            openid = openids[-1]
-            user_data = _initial_from_sreg(openid.sreg, self.suggest_nickname)
-            user = User.objects.create(**user_data)
-
-            user.openids.create(openid = openid.openid)
-            user.set_unusable_password()
-
-            self.log_in_user(request, user, openid)
-
         response = self.redirect_if_valid_next(request)
         if not response:
             response = HttpResponseRedirect(self.redirect_after_login)
+
+        if openid_object is not None:
+            user_data = _initial_from_sreg(openid_object.sreg, self.suggest_nickname)
+            user = User.objects.create(**user_data)
+
+            user.openids.create(openid = openid_object.openid)
+            user.set_unusable_password()
+
+            self.log_in_user(request, user)
         return response
 
     def suggest_nickname(self, nickname):

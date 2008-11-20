@@ -19,7 +19,8 @@ class ConsumerTest(TestCase):
         self.assert_('openid_bits' not in session)
 
         response = self.client.post(reverse('obasic-index'), {
-            'openid_url': 'http://simonwillison.net/'
+            'openid_url_0': 'openid',
+            'openid_url_1': 'http://simonwillison.net/'
         })
 
         self.assertRedirects(response, 'http://url-of-openid-server/')
@@ -31,7 +32,8 @@ class ConsumerTest(TestCase):
         openid_consumer = MyConsumer()
         openid_consumer.raise_discover_failure = True
         response = self.client.post(reverse('obasic-index'), {
-            'openid_url': 'not-an-openid'
+            'openid_url_0': 'openid',
+            'openid_url_1': 'http://not-an-openid.com'
         })
         self.assertContains(response, openid_consumer.openid_invalid_message)
     
