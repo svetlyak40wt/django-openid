@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'django-openid',
-    version = '0.1.1',
+    version = '0.1.2',
     description = 'django-openid provides tools for dealing with OpenID '
                   'in your Django applications.',
     long_description = 'django-openid provides tools for dealing with OpenID '
@@ -16,7 +16,7 @@ setup(
     maintainer_email = 'svetlyak.40wt@gmail.com',
     url = 'http://code.google.com/p/django-openid/',
     dependency_links = ['http://aartemenko.com/media/packages.html'],
-    install_requires = ['Django', 'python-openid'],
+    install_requires = ['python-openid'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Plugins',
