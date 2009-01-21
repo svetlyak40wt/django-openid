@@ -22,6 +22,7 @@ from django_openid.utils import OpenID
 from django_openid.forms import OpenIDLoginForm
 from django_openid import signed
 from urlparse import urljoin
+from django_openid.response import RequestTemplateResponse
 
 class SessionUserSessionMixin(object):
     def get_user_session(self, request):
@@ -111,7 +112,7 @@ Fzk0lpcjIQA7""".strip()
     def render(self, request, template, context=None):
         context = context or {}
         context['base_template'] = self.base_template
-        return render_to_response(template, context)
+        return RequestTemplateResponse(request, template, context)
     
     def do_index(self, request, extra_message=None):
         return self.do_login(request, extra_message)

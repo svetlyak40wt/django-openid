@@ -1,9 +1,9 @@
 from django.http import HttpResponseRedirect
-from django import forms
 
 from django_openid.auth import AuthConsumer
 from django.conf import settings
 from django_openid.utils import OpenID
+from django_openid import forms
 
 from openid.consumer import consumer
 
@@ -59,12 +59,14 @@ class RegistrationConsumer(AuthConsumer):
     # sreg
     sreg = ['nickname', 'email', 'fullname']
     
+    RegistrationForm = forms.RegistrationFormPasswordConfirm
+    
     def save_form(self, form):
         user = form.save()
         return user
     
     def get_registration_form_class(self, request):
-        return RegistrationForm
+        return self.RegistrationForm
     
     def show_i_have_logged_you_in(self, request):
         return self.show_message(
@@ -89,7 +91,7 @@ class RegistrationConsumer(AuthConsumer):
                 self.log_in_user(request, matches[0])
                 response = self.show_i_have_logged_you_in(request)
             else:
-                response = HttpResponseRedirect(urlparse.urljoin(
+                response = HttpResponseRedirect(urljoin(
                     request.path, reverse(self.page_name_prefix + '-register')
                 ))
             self.persist_openid(request, response, openid_object)
@@ -130,10 +132,10 @@ class RegistrationConsumer(AuthConsumer):
         if request.POST.get('openid_url', None):
             return self.start_openid_process(request,
                 user_url = request.POST.get('openid_url'),
-                on_complete_url = urlparse.urljoin(
+                on_complete_url = urljoin(
                     request.path, reverse(self.page_name_prefix + '-register_complete')
                 ),
-                trust_root = urlparse.urljoin(request.path, '..')
+                trust_root = urljoin(request.path, '..')
             )
         
         RegistrationForm = self.get_registration_form_class(request)
@@ -180,7 +182,7 @@ class RegistrationConsumer(AuthConsumer):
         # If the user gets here, they have attempted to log in using an 
         # OpenID BUT it's an OpenID we have never seen before - so show 
         # them the index page but with an additional message
-        return self.show_login(request, self.unknown_openid_message)
+        return self.do_index(request, self.unknown_openid_message)
     
     def show_already_signed_in(self, request):
         return self.show_message(
