@@ -68,7 +68,11 @@ def django_tests(verbosity, interactive, test_labels):
     get_apps()
 
     # Load all the test model apps.
-    for model_dir, model_name in get_test_models():
+    test_models = get_test_models()
+    if not test_labels:
+        test_labels = [name for dir, name in test_models]
+
+    for model_dir, model_name in test_models:
         model_label = '.'.join([model_dir, model_name])
         try:
             # if the model was named on the command line, or
