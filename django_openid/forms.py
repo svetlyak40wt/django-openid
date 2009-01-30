@@ -23,7 +23,6 @@ class OpenIDInput(forms.MultiWidget):
         value = super(OpenIDInput, self).value_from_datadict(data, files, name)
         try:
             service, user = value
-            print  _service_urls.get(service, u'%s') % user
             return _service_urls.get(service, u'%s') % user
         except ValueError:
             return None

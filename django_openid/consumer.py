@@ -8,6 +8,8 @@ from django_openid.utils import create_urlconf
 
 urlpatterns += create_urlconf('openid', MyConsumerSubclass())
 """
+import logging
+
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.shortcuts import render_to_response
@@ -274,15 +276,16 @@ Fzk0lpcjIQA7""".strip()
     
     def redirect_if_valid_next(self, request):
         "Logic for checking if a signed ?next= token is included in request"
-        print "redirect_if_valid_next"
+        log = logging.getLogger('django-openid')
+        log.debug('redirect_if_valid_next')
         try:
             next = signed.loads(
                 request.REQUEST.get('next', ''), extra_salt=settings.SECRET_KEY
             )
-            print "  ... redirecting"
+            log.debug('... redirecting')
             return HttpResponseRedirect(next)
         except ValueError:
-            print "  ... no valid next token %s" % request.REQUEST.get('next')
+            log.exception('... no valid next token %s' % request.REQUEST.get('next'))
             return None
     
     def on_success(self, request, identity_url, openid_response):
