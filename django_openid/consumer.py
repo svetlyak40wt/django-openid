@@ -112,6 +112,9 @@ Fzk0lpcjIQA7""".strip()
     def render(self, request, template, context=None):
         context = context or {}
         context['base_template'] = self.base_template
+        if template is None:
+            import pdb
+            pdb.set_trace()
         return RequestTemplateResponse(request, template, context)
     
     def do_index(self, request, extra_message=None):

@@ -29,6 +29,9 @@ class Provider(object):
     def render(self, request, template, context=None):
         context = context or {}
         context['base_template'] = self.base_template
+#        if template is None:
+#            import pdb
+#            pdb.set_trace()
         return RequestTemplateResponse(request, template, context)
     
     def get_server(self, request):
